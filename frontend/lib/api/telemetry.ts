@@ -65,6 +65,27 @@ export async function fetchPositions(
   });
 }
 
+export async function fetchDriverTelemetry(selection: SessionSelection) {
+  return requestJson<PositionSeriesResponse & {
+    telemetry: any[];
+    lap_time?: string | null;
+    lap_time_seconds?: number | null;
+    lap_number?: number | null;
+    compound?: string | null;
+    sector_1_seconds?: number | null;
+    sector_2_seconds?: number | null;
+    sector_3_seconds?: number | null;
+    sector_1?: string | null;
+    sector_2?: string | null;
+    sector_3?: string | null;
+  }>("/telemetry", {
+    year: selection.year,
+    grand_prix: selection.grandPrix,
+    session: selection.session,
+    driver: selection.driver,
+  });
+}
+
 export async function fetchSpeed(
   selection: SessionSelection,
   maxPoints = 2500,

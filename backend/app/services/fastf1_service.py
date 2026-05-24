@@ -163,6 +163,16 @@ class FastF1Service:
             team=payload.team,
             positions=sampled_positions,
             telemetry=sampled_telemetry,
+            lap_time_seconds=payload.lap_time_seconds,
+            lap_time=payload.lap_time,
+            lap_number=payload.lap_number,
+            compound=payload.compound,
+            sector_1_seconds=payload.sector_1_seconds,
+            sector_2_seconds=payload.sector_2_seconds,
+            sector_3_seconds=payload.sector_3_seconds,
+            sector_1=payload.sector_1,
+            sector_2=payload.sector_2,
+            sector_3=payload.sector_3,
         )
 
     def _get_driver_telemetry_sync(
@@ -225,7 +235,63 @@ class FastF1Service:
             session_code,
         )
 
-        return DriverTelemetryResponse(driver=driver_code, team=team_name, positions=positions, telemetry=telemetry)
+        # extract lap-level metadata if available from fastest_lap
+        lap_time_seconds = None
+        lap_time_str = None
+        lap_number = None
+        compound = None
+        s1_seconds = None
+        s2_seconds = None
+        s3_seconds = None
+        s1_str = None
+        s2_str = None
+        s3_str = None
+
+        try:
+            lap_time = fastest_lap.get("LapTime")
+            if pd.notna(lap_time):
+                lap_time_seconds = float(lap_time.total_seconds())
+                lap_time_str = self._format_lap_time(lap_time_seconds)
+
+            lap_number_value = fastest_lap.get("LapNumber")
+            lap_number = int(lap_number_value) if pd.notna(lap_number_value) else None
+
+            compound_value = fastest_lap.get("Compound")
+            compound = str(compound_value) if pd.notna(compound_value) else None
+
+            s1 = fastest_lap.get("Sector1Time")
+            s2 = fastest_lap.get("Sector2Time")
+            s3 = fastest_lap.get("Sector3Time")
+
+            if pd.notna(s1):
+                s1_seconds = float(s1.total_seconds())
+                s1_str = self._format_sector_time(s1)
+            if pd.notna(s2):
+                s2_seconds = float(s2.total_seconds())
+                s2_str = self._format_sector_time(s2)
+            if pd.notna(s3):
+                s3_seconds = float(s3.total_seconds())
+                s3_str = self._format_sector_time(s3)
+        except Exception:
+            # best-effort only; don't fail telemetry load for missing sector data
+            pass
+
+        return DriverTelemetryResponse(
+            driver=driver_code,
+            team=team_name,
+            positions=positions,
+            telemetry=telemetry,
+            lap_time_seconds=lap_time_seconds,
+            lap_time=lap_time_str,
+            lap_number=lap_number,
+            compound=compound,
+            sector_1_seconds=s1_seconds,
+            sector_2_seconds=s2_seconds,
+            sector_3_seconds=s3_seconds,
+            sector_1=s1_str,
+            sector_2=s2_str,
+            sector_3=s3_str,
+        )
 
     def _get_tire_series_sync(
         self,
@@ -431,6 +497,20 @@ class FastF1Service:
 
         lap_time_seconds = float(lap_time.total_seconds())
 
+        sector_1_value = fastest_lap.get("Sector1Time")
+        sector_2_value = fastest_lap.get("Sector2Time")
+        sector_3_value = fastest_lap.get("Sector3Time")
+
+        sector_1_seconds = (
+            float(sector_1_value.total_seconds()) if pd.notna(sector_1_value) else None
+        )
+        sector_2_seconds = (
+            float(sector_2_value.total_seconds()) if pd.notna(sector_2_value) else None
+        )
+        sector_3_seconds = (
+            float(sector_3_value.total_seconds()) if pd.notna(sector_3_value) else None
+        )
+
         lap_number_value = fastest_lap.get("LapNumber")
         lap_number = int(lap_number_value) if pd.notna(lap_number_value) else None
 
@@ -442,6 +522,12 @@ class FastF1Service:
             team=team_name,
             lap_time_seconds=lap_time_seconds,
             lap_time=self._format_lap_time(lap_time_seconds),
+            sector_1_seconds=sector_1_seconds,
+            sector_2_seconds=sector_2_seconds,
+            sector_3_seconds=sector_3_seconds,
+            sector_1=self._format_sector_time(sector_1_value),
+            sector_2=self._format_sector_time(sector_2_value),
+            sector_3=self._format_sector_time(sector_3_value),
             lap_number=lap_number,
             compound=compound,
         )
@@ -497,6 +583,12 @@ class FastF1Service:
             team=team_name,
             lap_time_seconds=lap_time_seconds,
             lap_time=self._format_lap_time(lap_time_seconds),
+            sector_1_seconds=None,
+            sector_2_seconds=None,
+            sector_3_seconds=None,
+            sector_1=None,
+            sector_2=None,
+            sector_3=None,
             lap_number=None,
             compound=None,
         )
@@ -586,6 +678,17 @@ class FastF1Service:
             return f"{hours}:{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
 
         return f"{minutes}:{seconds:02d}.{milliseconds:03d}"
+
+    def _format_sector_time(self, sector_time: Any) -> str | None:
+        """Format an optional sector time into the same display style as laps."""
+
+        if pd.isna(sector_time):
+            return None
+
+        if hasattr(sector_time, "total_seconds"):
+            return self._format_lap_time(float(sector_time.total_seconds()))
+
+        return self._format_lap_time(float(sector_time))
 
 
 fastf1_service = FastF1Service()

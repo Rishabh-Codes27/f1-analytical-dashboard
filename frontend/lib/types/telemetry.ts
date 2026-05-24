@@ -10,6 +10,27 @@ export type PositionSeriesResponse = {
   positions: PositionPoint[];
 };
 
+export type DriverTelemetryResponse = PositionSeriesResponse & {
+  telemetry: Array<{
+    time: number;
+    speed: number;
+    throttle?: number;
+    brake?: number;
+    gear?: number;
+    rpm?: number;
+  }>;
+  lap_time?: string | null;
+  lap_time_seconds?: number | null;
+  lap_number?: number | null;
+  compound?: string | null;
+  sector_1_seconds?: number | null;
+  sector_2_seconds?: number | null;
+  sector_3_seconds?: number | null;
+  sector_1?: string | null;
+  sector_2?: string | null;
+  sector_3?: string | null;
+};
+
 export type MetricPoint = {
   time: number;
   value: number;
@@ -27,6 +48,12 @@ export type FastestLapResponse = {
   team: string;
   lap_time_seconds: number;
   lap_time: string;
+  sector_1_seconds: number | null;
+  sector_2_seconds: number | null;
+  sector_3_seconds: number | null;
+  sector_1: string | null;
+  sector_2: string | null;
+  sector_3: string | null;
   lap_number: number | null;
   compound: string | null;
 };
