@@ -132,10 +132,10 @@ export default function Home() {
   }, [pointerX, pointerY]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#04090a] text-[#defef8]">
+    <main className="relative min-h-screen overflow-hidden bg-[#090b10] text-white">
       <motion.div
         aria-hidden
-        className="pointer-events-none fixed left-0 top-0 z-40 h-20 w-20 rounded-full border border-cyan-100/30 bg-cyan-200/10 blur-[1px]"
+        className="pointer-events-none fixed left-0 top-0 z-40 h-20 w-20 rounded-full border border-[#e10600]/25 bg-[#e10600]/10 blur-[1px]"
         style={{
           x: smoothX,
           y: smoothY,
@@ -147,7 +147,7 @@ export default function Home() {
       <div className="pointer-events-none absolute inset-0">
         <motion.div
           aria-hidden
-          className="absolute -left-20 top-16 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl"
+          className="absolute -left-20 top-16 h-72 w-72 rounded-full bg-[#e10600]/15 blur-3xl"
           animate={{ scale: [1, 1.1, 1], opacity: [0.35, 0.55, 0.35] }}
           transition={{
             duration: 6,
@@ -157,7 +157,7 @@ export default function Home() {
         />
         <motion.div
           aria-hidden
-          className="absolute right-0 top-1/3 h-80 w-80 rounded-full bg-emerald-400/15 blur-3xl"
+          className="absolute right-0 top-1/3 h-80 w-80 rounded-full bg-white/5 blur-3xl"
           animate={{ y: [0, -24, 0], opacity: [0.2, 0.4, 0.2] }}
           transition={{
             duration: 8,
@@ -169,7 +169,7 @@ export default function Home() {
 
       <section className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col items-center justify-center px-6 py-16 text-center md:px-10">
         <motion.p
-          className="mx-auto mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-cyan-300/30 bg-white/5 px-4 py-1.5 text-xs uppercase tracking-[0.22em] text-cyan-200"
+          className="mx-auto mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs uppercase tracking-[0.22em] text-[#ffb4b0]"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -184,13 +184,13 @@ export default function Home() {
           transition={{ duration: 0.65, delay: 0.08 }}
         >
           Formula 1 Telemetry Tool
-          <span className="block bg-gradient-to-r from-cyan-200 via-teal-200 to-emerald-200 bg-clip-text text-transparent">
+          <span className="block bg-gradient-to-r from-white via-[#ffb4b0] to-[#e10600] bg-clip-text text-transparent">
             Replay Every Lap. Decode Every Corner.
           </span>
         </motion.h1>
 
         <motion.p
-          className="mx-auto mt-5 max-w-2xl text-sm leading-relaxed text-[#c3ddd9] md:text-base"
+          className="mx-auto mt-5 max-w-2xl text-sm leading-relaxed text-[#afb7c4] md:text-base"
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
@@ -206,16 +206,9 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
         >
-          {/* <Link
-            href="/dashboard"
-            className="group inline-flex items-center gap-2 rounded-lg border border-cyan-200/70 bg-cyan-200 px-5 py-3 text-sm font-semibold text-[#031415] transition hover:scale-[1.02] hover:bg-cyan-100"
-          >
-            Try It Now
-            <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-          </Link> */}
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 rounded-lg border border-[#2d4346] bg-[#0b1719] px-5 py-3 text-sm font-semibold text-[#d4f6f2] transition hover:border-cyan-300/70 hover:bg-[#102325]"
+            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-[#e10600]/45 hover:bg-white/8"
           >
             <PlayCircle className="h-4 w-4" />
             Try Demo
@@ -228,10 +221,10 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.35 }}
         >
-          <article className="rounded-xl border border-white/12 bg-white/[0.03] p-4 backdrop-blur-sm">
+          <article className="rounded-xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm">
             <div className="mb-3 flex items-end justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">
+                <p className="text-xs uppercase tracking-[0.2em] text-[#ffb4b0]/80">
                   Demo Telemetry
                 </p>
                 <h2 className="text-sm font-bold text-[#e7fffc]">
@@ -239,10 +232,10 @@ export default function Home() {
                 </h2>
               </div>
               <div className="text-right">
-                <p className="text-xs text-[#9ab9b5]">
+                <p className="text-xs text-[#9aa3b2]">
                   t={activePoint.time.toFixed(1)}s
                 </p>
-                <p className="text-sm font-semibold text-cyan-100">
+                <p className="text-sm font-semibold text-white">
                   {activePoint.speed} km/h
                 </p>
               </div>
@@ -250,7 +243,7 @@ export default function Home() {
 
             <svg
               viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-              className="h-32 w-full rounded-md border border-white/8 bg-[#071113]"
+              className="h-32 w-full rounded-md border border-white/8 bg-[#0c1017]"
               role="img"
               aria-label="Demo speed chart"
               onMouseMove={(event) => {
@@ -268,19 +261,19 @@ export default function Home() {
                 y1="1"
                 x2={chartWidth}
                 y2="1"
-                stroke="rgba(173, 234, 226, 0.15)"
+                stroke="rgba(255, 255, 255, 0.12)"
               />
               <line
                 x1="0"
                 y1={chartHeight - 1}
                 x2={chartWidth}
                 y2={chartHeight - 1}
-                stroke="rgba(173, 234, 226, 0.15)"
+                stroke="rgba(255, 255, 255, 0.12)"
               />
               <polyline
                 points={polylinePoints}
                 fill="none"
-                stroke="rgba(103, 232, 249, 0.95)"
+                stroke="rgba(225, 6, 0, 0.92)"
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -290,14 +283,14 @@ export default function Home() {
                 y1="0"
                 x2={activeX}
                 y2={chartHeight}
-                stroke="rgba(125, 251, 255, 0.35)"
+                stroke="rgba(225, 6, 0, 0.34)"
                 strokeDasharray="4 4"
               />
               <circle
                 cx={activeX}
                 cy={activeY}
                 r="4.5"
-                fill="#8bf7ff"
+                fill="#e10600"
                 stroke="#041012"
                 strokeWidth="2"
               />
@@ -309,34 +302,34 @@ export default function Home() {
               max={demoTelemetry.length - 1}
               value={demoIndex}
               onChange={(event) => setDemoIndex(Number(event.target.value))}
-              className="mt-3 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-[#163437]"
+              className="mt-3 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/10"
               aria-label="Demo timeline"
             />
           </article>
 
-          <article className="rounded-xl border border-white/12 bg-white/[0.03] p-4 backdrop-blur-sm">
+          <article className="rounded-xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm">
             <div className="mb-3 flex items-end justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-emerald-200/80">
+                <p className="text-xs uppercase tracking-[0.2em] text-[#ffb4b0]/80">
                   Track Preview
                 </p>
                 <h2 className="text-sm font-bold text-[#e7fffc]">
                   Spa-Francorchamps
                 </h2>
               </div>
-              <p className="text-xs text-[#9ab9b5]">Synced to demo timeline</p>
+              <p className="text-xs text-[#9aa3b2]">Synced to demo timeline</p>
             </div>
 
             <svg
               viewBox="0 0 280 190"
-              className="h-40 w-full rounded-md border border-white/8 bg-[#071113]"
+              className="h-40 w-full rounded-md border border-white/8 bg-[#0c1017]"
               role="img"
               aria-label="Spa track preview"
             >
               <polyline
                 points={spaPolylinePoints}
                 fill="none"
-                stroke="rgba(52, 211, 153, 0.22)"
+                stroke="rgba(255, 255, 255, 0.18)"
                 strokeWidth="10"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -344,7 +337,7 @@ export default function Home() {
               <polyline
                 points={spaPolylinePoints}
                 fill="none"
-                stroke="rgba(181, 255, 228, 0.78)"
+                stroke="rgba(225, 6, 0, 0.78)"
                 strokeWidth="4"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -354,7 +347,7 @@ export default function Home() {
                 y1="172"
                 x2="42"
                 y2="160"
-                stroke="rgba(232, 253, 255, 0.9)"
+                stroke="rgba(255, 255, 255, 0.85)"
                 strokeWidth="2"
                 strokeDasharray="3 2"
               />
@@ -362,12 +355,12 @@ export default function Home() {
                 cx={activeSpaPoint.x}
                 cy={activeSpaPoint.y}
                 r="6"
-                fill="#9afee7"
+                fill="#e10600"
                 stroke="#051212"
                 strokeWidth="3"
               />
             </svg>
-            <p className="mt-3 text-xs text-[#9ab9b5]">
+            <p className="mt-3 text-xs text-[#9aa3b2]">
               Spa-like layout with a long Kemmel-style climb and right-side
               loop, synced to the demo speed timeline.
             </p>
@@ -398,10 +391,10 @@ export default function Home() {
               key={title}
               className="rounded-xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm"
             >
-              <h2 className="text-sm font-bold uppercase tracking-wide text-cyan-100">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-[#ffb4b0]">
                 {title}
               </h2>
-              <p className="mt-2 text-xs leading-relaxed text-[#b6cfcb]">
+              <p className="mt-2 text-xs leading-relaxed text-[#b6bfcb]">
                 {copy}
               </p>
             </article>

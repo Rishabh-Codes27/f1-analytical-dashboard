@@ -28,7 +28,7 @@ function SpeedTooltip({
 
   const point = payload[0].payload;
   return (
-    <div className="rounded-xl border border-[#57e4d6]/50 bg-[#021517]/95 px-3 py-2 text-xs text-[#c8fffa] shadow-xl backdrop-blur-sm">
+    <div className="rounded-xl border border-white/10 bg-[#0d1119]/95 px-3 py-2 text-xs text-white/80 shadow-xl backdrop-blur-sm">
       <div className="font-medium text-white">Telemetry Snapshot</div>
       <div className="mt-1">Lap Time: {formatSeconds(point.time)}</div>
       <div>Session Time: {formatSeconds(point.sessionTime)}</div>
@@ -55,25 +55,25 @@ const SpeedChart = memo(function SpeedChart({
         onMouseMove={(state) => onChartHover(state as { activeLabel?: number })}
         onMouseLeave={() => setHoveredTime(null)}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#1d2a2d" />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" />
         <XAxis
           dataKey="time"
           tickFormatter={(value) => formatSeconds(Number(value))}
           minTickGap={36}
           interval="preserveStartEnd"
-          stroke="#86bdb7"
+          stroke="rgba(255,255,255,0.36)"
         />
-        <YAxis tickFormatter={(value) => `${value}`} stroke="#86bdb7" />
+        <YAxis tickFormatter={(value) => `${value}`} stroke="rgba(255,255,255,0.36)" />
         <Tooltip content={<SpeedTooltip />} />
         <ReferenceLine
           x={hoveredTime ?? undefined}
-          stroke="#67f3df"
+          stroke="#e10600"
           strokeDasharray="4 3"
         />
         <Line
           type="monotone"
           dataKey="speed"
-          stroke="#37e2d0"
+          stroke="#e10600"
           strokeWidth={2.5}
           dot={false}
           isAnimationActive={false}
@@ -95,6 +95,12 @@ type SpeedTracePanelProps = {
   fastestLapDetails: string;
   selectedDriver: string;
   selectedTeam: string;
+  selectedDriverName: string;
+  trackLabel: string;
+  sessionLabel: string;
+  grandPrixLabel: string;
+  isLoading: boolean;
+  summaryCards: Array<{ label: string; value: string; subtext?: string }>;
 };
 
 export function SpeedTracePanel({
@@ -109,23 +115,35 @@ export function SpeedTracePanel({
   fastestLapDetails,
   selectedDriver,
   selectedTeam,
+  selectedDriverName,
+  trackLabel,
+  sessionLabel,
+  grandPrixLabel,
+  isLoading,
+  summaryCards,
 }: SpeedTracePanelProps) {
   return (
-    <article className="rounded-2xl border border-[#223335] bg-[#071011] p-4 shadow-lg">
+    <article className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(17,19,28,0.98),rgba(10,12,18,0.98))] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.38)]">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-sm font-medium text-zinc-100">
-          <Gauge className="h-4 w-4 text-[#52e1d3]" /> Speed Trace
+        <h2 className="flex items-center gap-2 text-sm font-medium text-white">
+          <Gauge className="h-4 w-4 text-[#e10600]" /> Speed Trace
         </h2>
-        <span className="text-xs text-zinc-400">Hover for telemetry card</span>
+        <span className="text-xs text-white/45">Hover for telemetry card</span>
       </div>
 
-      <div className="mt-6 h-105 rounded-xl border border-[#1f2b2d] bg-[#040a0b] p-2">
-        <SpeedChart
-          speedPoints={speedPoints}
-          hoveredTime={hoveredTime}
-          onChartHover={onChartHover}
-          setHoveredTime={setHoveredTime}
-        />
+      <div className="mt-6 h-105 rounded-[24px] border border-white/8 bg-[#06080d] p-2">
+        {isLoading ? (
+          <div className="flex h-full items-center justify-center rounded-[20px] border border-white/8 bg-[linear-gradient(90deg,rgba(255,255,255,0.02),rgba(255,255,255,0.06),rgba(255,255,255,0.02))] bg-[length:200%_100%] animate-pulse">
+            <div className="h-[88%] w-[94%] rounded-[18px] border border-white/8 bg-white/[0.03]" />
+          </div>
+        ) : (
+          <SpeedChart
+            speedPoints={speedPoints}
+            hoveredTime={hoveredTime}
+            onChartHover={onChartHover}
+            setHoveredTime={setHoveredTime}
+          />
+        )}
       </div>
 
       <div className="mt-3 overflow-x-auto pb-1">
@@ -137,8 +155,8 @@ export function SpeedTracePanel({
                 key={lap.lapNumber}
                 className={
                   isActive
-                    ? "rounded-full border border-[#48dacb] bg-[#0d2f32] px-3 py-1.5 text-xs font-medium text-[#cbfffa] transition"
-                    : "rounded-full border border-[#2c4e52] px-3 py-1.5 text-xs font-medium text-[#84cbc3] transition hover:bg-[#0b2022]"
+                    ? "rounded-full border border-[#e10600]/55 bg-[#e10600]/12 px-3 py-1.5 text-xs font-medium text-white transition"
+                    : "rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-white/65 transition hover:border-white/20 hover:bg-white/[0.05]"
                 }
                 onClick={() => {
                   onSelectLap(index);
@@ -152,25 +170,58 @@ export function SpeedTracePanel({
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-[#1e3032] bg-[#07181a] p-3">
-          <p className="flex items-center gap-2 text-xs uppercase tracking-wide text-[#7fd9ce]">
-            <Timer className="h-4 w-4" /> Session Fastest Lap
-          </p>
-          <p className="mt-1 text-2xl font-semibold text-[#d9fff9]">
-            {fastestLapTime}
-          </p>
-          <p className="text-xs text-zinc-400">{fastestLapDetails}</p>
-        </div>
-        <div className="rounded-xl border border-[#1e3032] bg-[#07181a] p-3">
-          <p className="text-xs uppercase tracking-wide text-[#7fd9ce]">
-            Selected Driver
-          </p>
-          <p className="mt-1 text-2xl font-semibold text-[#d9fff9]">
-            {selectedDriver}
-          </p>
-          <p className="text-xs text-zinc-400">{selectedTeam}</p>
-        </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {isLoading ? (
+          <>
+            <div className="h-28 animate-pulse rounded-2xl border border-white/8 bg-white/[0.04]" />
+            <div className="h-28 animate-pulse rounded-2xl border border-white/8 bg-white/[0.04]" />
+            <div className="h-28 animate-pulse rounded-2xl border border-white/8 bg-white/[0.04]" />
+          </>
+        ) : (
+          <>
+            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+              <p className="flex items-center gap-2 text-xs uppercase tracking-wide text-white/45">
+                <Timer className="h-4 w-4" /> Session Fastest Lap
+              </p>
+              <p className="mt-1 text-2xl font-semibold text-white">
+                {fastestLapTime}
+              </p>
+              <p className="text-xs text-white/45">{fastestLapDetails}</p>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+              <p className="text-xs uppercase tracking-wide text-white/45">
+                Selected Driver
+              </p>
+              <p className="mt-1 text-2xl font-semibold text-white">
+                {selectedDriver}
+              </p>
+              <p className="text-xs text-white/45">{selectedDriverName}</p>
+              <p className="text-xs text-white/45">{selectedTeam}</p>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+              <p className="text-xs uppercase tracking-wide text-white/45">
+                Session Context
+              </p>
+              <p className="mt-1 text-lg font-semibold text-white">{sessionLabel}</p>
+              <p className="text-xs text-white/45">{grandPrixLabel}</p>
+              <p className="text-xs text-white/45">{trackLabel}</p>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {isLoading
+          ? Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="h-24 animate-pulse rounded-2xl border border-white/8 bg-white/[0.04]" />
+            ))
+          : summaryCards.map((card) => (
+              <div key={card.label} className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                <p className="text-[10px] uppercase tracking-[0.24em] text-white/45">{card.label}</p>
+                <p className="mt-1 text-base font-semibold text-white">{card.value}</p>
+                {card.subtext ? <p className="text-xs text-white/45">{card.subtext}</p> : null}
+              </div>
+            ))}
       </div>
     </article>
   );

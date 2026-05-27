@@ -15,7 +15,7 @@ const bodyFont = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Formula 1 Telemetry Tool",
+  title: "F1 Analytics Dashboard",
   description: "Interactive Formula 1 telemetry replay and analytics.",
 };
 
