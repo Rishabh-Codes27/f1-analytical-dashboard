@@ -4,7 +4,7 @@
 *.pyc
 
 # FastF1 telemetry local storage cache 
-backend/.fastf1_cache/
+backend/.fastf1_cache/  
 
 # Next.js frontend dependencies & build outputs
 frontend/node_modules/
