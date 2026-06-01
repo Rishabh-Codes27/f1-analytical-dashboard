@@ -27,7 +27,7 @@ export const useReplayStore = create<ReplayState>((set, get) => ({
   hoveredTime: null,
   setPlaying: (isPlaying) => set({ isPlaying }),
   togglePlayback: () => set((state) => ({ isPlaying: !state.isPlaying })),
-  setPlaybackRate: (rate) => set({ playbackRate: clamp(rate, 0.25, 4) }),
+  setPlaybackRate: (rate) => set({ playbackRate: clamp(rate, 0.25, 10) }),
   setCurrentTime: (time) => {
     const duration = get().duration;
     const nextTime = clamp(time, 0, Math.max(duration, 0));

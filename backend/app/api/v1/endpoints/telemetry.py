@@ -10,6 +10,7 @@ from app.schemas.telemetry_schema import (
     FastestLapResponse,
     MetricSeriesResponse,
     PositionSeriesResponse,
+    RaceReplayResponse,
     TireSeriesResponse,
 )
 from app.services.fastf1_service import (
@@ -23,6 +24,49 @@ from app.services.fastf1_service import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["telemetry"])
+
+LOCKED_SEASON_YEAR = 2025
+
+
+@router.get(
+    "/telemetry/race-replay",
+    response_model=RaceReplayResponse,
+    summary="Get all-driver race replay data and leaderboard progression",
+)
+async def get_race_replay(
+    year: int = Query(..., ge=1950, le=2100, description="Season year (locked to 2025)"),
+    grand_prix: str = Query(..., min_length=1, description="Grand Prix name"),
+    session: str = Query("R", min_length=1, max_length=10, description="Session code, usually R"),
+    max_track_points: int = Query(4000, ge=200, le=30000, description="Maximum track points per driver"),
+    max_leaderboard_points: int = Query(1200, ge=50, le=10000, description="Maximum leaderboard samples per driver"),
+    telemetry_service: FastF1Service = Depends(get_fastf1_service),
+) -> RaceReplayResponse:
+    """Return race replay payload for all drivers with timeline-based leaderboard positions."""
+
+    if year != LOCKED_SEASON_YEAR:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Only the {LOCKED_SEASON_YEAR} season is supported in this build.",
+        )
+
+    try:
+        return await telemetry_service.get_race_replay(
+            year=year,
+            grand_prix=grand_prix,
+            session_code=session,
+            max_track_points=max_track_points,
+            max_leaderboard_points=max_leaderboard_points,
+        )
+    except (SessionLoadError, TelemetryDataError) as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception:  # pragma: no cover - this is our last-resort safety net.
+        logger.exception("Unexpected race replay API failure")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected race replay processing error.",
+        )
 
 
 @router.get(

@@ -46,6 +46,36 @@ def normalize_coordinate_series(series: pd.Series) -> pd.Series:
     return ((series - minimum) / (maximum - minimum)).astype("float64")
 
 
+def normalize_position_frame(position_frame: pd.DataFrame) -> pd.DataFrame:
+    """Normalize track coordinates without distorting the circuit aspect ratio."""
+
+    if position_frame.empty:
+        raise ValueError("Position frame is empty.")
+
+    x_min = float(position_frame["x"].min())
+    x_max = float(position_frame["x"].max())
+    y_min = float(position_frame["y"].min())
+    y_max = float(position_frame["y"].max())
+
+    x_span = x_max - x_min
+    y_span = y_max - y_min
+    span = max(x_span, y_span)
+
+    if span <= 0:
+        frame = position_frame.copy()
+        frame["x"] = 0.0
+        frame["y"] = 0.0
+        return frame
+
+    x_padding = (span - x_span) / 2.0
+    y_padding = (span - y_span) / 2.0
+
+    frame = position_frame.copy()
+    frame["x"] = ((frame["x"] - x_min + x_padding) / span).astype("float64")
+    frame["y"] = ((frame["y"] - y_min + y_padding) / span).astype("float64")
+    return frame
+
+
 def prepare_telemetry_frame(car_data: pd.DataFrame) -> pd.DataFrame:
     """Select and normalize the telemetry columns we expose publicly."""
 
@@ -96,10 +126,8 @@ def prepare_position_frame(position_data: pd.DataFrame) -> pd.DataFrame:
         }
     )
 
-    position_frame["x"] = normalize_coordinate_series(position_frame["x"])
-    position_frame["y"] = normalize_coordinate_series(position_frame["y"])
-
-    return position_frame.dropna(subset=["time"]).reset_index(drop=True)
+    normalized_frame = normalize_position_frame(position_frame)
+    return normalized_frame.dropna(subset=["time"]).reset_index(drop=True)
 
 
 def align_position_frame(position_frame: pd.DataFrame, telemetry_times: Iterable[float]) -> pd.DataFrame:

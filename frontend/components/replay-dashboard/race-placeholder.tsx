@@ -1,9 +1,16 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ChevronRight, FlagTriangleRight, Gauge, Swords, TimerReset } from "lucide-react";
+import { ChevronRight, FlagTriangleRight, Gauge, Swords, TimerReset, type LucideIcon } from "lucide-react";
 
 export function RacePlaceholder() {
+  const plannedFeatures: Array<{ icon: LucideIcon; label: string }> = [
+    { icon: Swords, label: "Position changes" },
+    { icon: Gauge, label: "Strategy analysis" },
+    { icon: FlagTriangleRight, label: "Driver battles" },
+    { icon: TimerReset, label: "Overtake visualization" },
+  ];
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 12 }}
@@ -37,12 +44,7 @@ export function RacePlaceholder() {
             Planned features
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {[
-              [Swords, "Position changes"],
-              [Gauge, "Strategy analysis"],
-              [FlagTriangleRight, "Driver battles"],
-              [TimerReset, "Overtake visualization"],
-            ].map(([Icon, label]) => (
+            {plannedFeatures.map(({ icon: Icon, label }) => (
               <div
                 key={label}
                 className="flex items-center gap-3 rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-4 py-3"

@@ -118,3 +118,36 @@ class FastestLapResponse(BaseModel):
     sector_3: str | None = Field(default=None, description="Formatted sector 3 time")
     lap_number: int | None = Field(default=None, description="Lap number for the fastest lap")
     compound: str | None = Field(default=None, description="Tire compound used on the fastest lap")
+
+
+class RaceLeaderboardPoint(BaseModel):
+    """A single leaderboard position sample for one driver."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    time: float = Field(..., ge=0.0, description="Elapsed race time in seconds")
+    position: float = Field(..., ge=1.0, description="Race position at this time")
+
+
+class RaceDriverReplay(BaseModel):
+    """Race replay data for one driver."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    driver: str = Field(..., description="Driver code")
+    driver_name: str = Field(..., description="Driver full name")
+    team: str = Field(..., description="Team name")
+    positions: list[PositionPoint] = Field(default_factory=list)
+    leaderboard: list[RaceLeaderboardPoint] = Field(default_factory=list)
+
+
+class RaceReplayResponse(BaseModel):
+    """Response payload for full-session race replay."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    year: int = Field(..., ge=1950, le=2100)
+    grand_prix: str = Field(..., description="Grand Prix label")
+    session: str = Field(..., description="Session code")
+    duration_seconds: float = Field(..., ge=0.0)
+    drivers: list[RaceDriverReplay] = Field(default_factory=list)

@@ -103,20 +103,6 @@ export function TrackReplayPanel({
             isLoading={isLoading}
           />
         </div>
-      ) : fastestLap ? (
-        <div className="mb-3">
-          <TrackInfoCards
-            lapTime={fastestLap.lap_time}
-            sector1={fastestLap.sector_1}
-            sector2={fastestLap.sector_2}
-            sector3={fastestLap.sector_3}
-            driverCode={driverCode}
-            driverName={driverName}
-            team={driverTeam}
-            compound={driverCompound ?? fastestLap.compound}
-            isLoading={isLoading}
-          />
-        </div>
       ) : null}
 
       <div

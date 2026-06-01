@@ -207,7 +207,7 @@ export default function Home() {
           transition={{ duration: 0.6, delay: 0.3 }}
         >
           <Link
-            href="/dashboard"
+            href="/login"
             className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-[#e10600]/45 hover:bg-white/8"
           >
             <PlayCircle className="h-4 w-4" />

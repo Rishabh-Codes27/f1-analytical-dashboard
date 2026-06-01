@@ -18,6 +18,9 @@ from app.schemas.telemetry_schema import (
     MetricSeriesResponse,
     PositionPoint,
     PositionSeriesResponse,
+    RaceDriverReplay,
+    RaceLeaderboardPoint,
+    RaceReplayResponse,
     TelemetryPoint,
     TireSeriesResponse,
     TireStint,
@@ -147,6 +150,26 @@ class FastF1Service:
             year,
             grand_prix,
             session_code,
+        )
+
+    async def get_race_replay(
+        self,
+        *,
+        year: int,
+        grand_prix: str,
+        session_code: str,
+        max_track_points: int,
+        max_leaderboard_points: int,
+    ) -> RaceReplayResponse:
+        """Return full-session multi-driver race replay data."""
+
+        return await asyncio.to_thread(
+            self._get_race_replay_sync,
+            year,
+            grand_prix,
+            session_code,
+            max_track_points,
+            max_leaderboard_points,
         )
 
     def downsample_driver_telemetry(
@@ -591,6 +614,166 @@ class FastF1Service:
             sector_3=None,
             lap_number=None,
             compound=None,
+        )
+
+    def _get_race_replay_sync(
+        self,
+        year: int,
+        grand_prix: str,
+        session_code: str,
+        max_track_points: int,
+        max_leaderboard_points: int,
+    ) -> RaceReplayResponse:
+        """Build track-position replay and leaderboard progression for all race drivers."""
+
+        loaded_session = self._load_session(year, grand_prix, session_code)
+        results = getattr(loaded_session, "results", None)
+        laps = getattr(loaded_session, "laps", None)
+
+        if results is None or getattr(results, "empty", True):
+            raise TelemetryDataError("Race replay data is unavailable because session results are empty.")
+
+        if laps is None or getattr(laps, "empty", True):
+            raise TelemetryDataError("Race replay data is unavailable because session laps are empty.")
+
+        # Order by race finish where available.
+        ordered_results = results.copy()
+        if "Position" in ordered_results.columns:
+            ordered_results["Position"] = pd.to_numeric(ordered_results["Position"], errors="coerce")
+            ordered_results = ordered_results.sort_values("Position", na_position="last")
+
+        raw_track_frames: dict[str, pd.DataFrame] = {}
+        raw_leaderboard_frames: dict[str, pd.DataFrame] = {}
+        driver_meta: dict[str, tuple[str, str]] = {}
+
+        for _, row in ordered_results.iterrows():
+            driver_code = str(row.get("Abbreviation", "")).upper().strip()
+            if not driver_code:
+                continue
+
+            driver_number = str(row.get("DriverNumber", "")).strip()
+            driver_name = str(row.get("BroadcastName") or row.get("FullName") or driver_code)
+            team_name = str(row.get("TeamName") or "Unknown")
+            driver_meta[driver_code] = (driver_name, team_name)
+
+            # Track replay points from session position packets.
+            if driver_number:
+                try:
+                    driver_pos = loaded_session.pos_data[driver_number].copy()
+                except Exception:
+                    driver_pos = pd.DataFrame()
+            else:
+                driver_pos = pd.DataFrame()
+
+            if not driver_pos.empty and {"Time", "X", "Y"}.issubset(driver_pos.columns):
+                track_frame = pd.DataFrame(
+                    {
+                        "time": driver_pos["Time"].map(lambda value: float(value.total_seconds()) if pd.notna(value) else float("nan")),
+                        "x": pd.to_numeric(driver_pos["X"], errors="coerce"),
+                        "y": pd.to_numeric(driver_pos["Y"], errors="coerce"),
+                    }
+                ).dropna(subset=["time", "x", "y"])
+                if not track_frame.empty:
+                    first_time = float(track_frame["time"].iloc[0])
+                    track_frame["time"] = (track_frame["time"] - first_time).clip(lower=0.0)
+                    raw_track_frames[driver_code] = track_frame.sort_values("time").reset_index(drop=True)
+
+            # Leaderboard points sampled at each completed lap.
+            driver_laps = laps.loc[laps["Driver"].astype(str).str.upper() == driver_code].copy()
+            if not driver_laps.empty and {"Time", "Position"}.issubset(driver_laps.columns):
+                board_frame = pd.DataFrame(
+                    {
+                        "time": driver_laps["Time"].map(
+                            lambda value: float(value.total_seconds()) if pd.notna(value) else float("nan")
+                        ),
+                        "position": pd.to_numeric(driver_laps["Position"], errors="coerce"),
+                    }
+                ).dropna(subset=["time", "position"])
+                if not board_frame.empty:
+                    first_time = float(board_frame["time"].iloc[0])
+                    board_frame["time"] = (board_frame["time"] - first_time).clip(lower=0.0)
+                    board_frame = board_frame.sort_values("time").drop_duplicates(subset=["time"], keep="last")
+
+                    grid_value = pd.to_numeric(row.get("GridPosition"), errors="coerce")
+                    start_position = float(grid_value) if pd.notna(grid_value) and grid_value > 0 else float(board_frame["position"].iloc[0])
+                    start_row = pd.DataFrame({"time": [0.0], "position": [start_position]})
+                    board_frame = (
+                        pd.concat([start_row, board_frame], ignore_index=True)
+                        .sort_values("time")
+                        .drop_duplicates(subset=["time"], keep="first")
+                        .reset_index(drop=True)
+                    )
+                    raw_leaderboard_frames[driver_code] = board_frame
+
+        if not raw_track_frames:
+            raise TelemetryDataError("Race replay track packets were unavailable for this session.")
+
+        # Use global track extents so all drivers share the same map normalization.
+        all_track = pd.concat(raw_track_frames.values(), ignore_index=True)
+        min_x = float(all_track["x"].min())
+        max_x = float(all_track["x"].max())
+        min_y = float(all_track["y"].min())
+        max_y = float(all_track["y"].max())
+
+        x_span = max_x - min_x
+        y_span = max_y - min_y
+        span = max(x_span, y_span)
+
+        x_padding = (span - x_span) / 2.0 if span > 0 else 0.0
+        y_padding = (span - y_span) / 2.0 if span > 0 else 0.0
+
+        def normalize(value: float, minimum: float, padding: float, divisor: float) -> float:
+            if divisor <= 1e-9:
+                return 0.0
+            return (value - minimum + padding) / divisor
+
+        duration_candidates: list[float] = []
+        drivers: list[RaceDriverReplay] = []
+
+        for driver_code, track_frame in raw_track_frames.items():
+            normalized_track = track_frame.copy()
+            normalized_track["x"] = normalized_track["x"].map(lambda value: normalize(float(value), min_x, x_padding, span))
+            normalized_track["y"] = normalized_track["y"].map(lambda value: normalize(float(value), min_y, y_padding, span))
+            normalized_track = normalized_track.sort_values("time")
+
+            track_points = [
+                PositionPoint(time=float(row.time), x=float(row.x), y=float(row.y))
+                for row in normalized_track.itertuples(index=False)
+            ]
+            sampled_track_points = self._downsample_points(track_points, max_track_points)
+
+            leaderboard_frame = raw_leaderboard_frames.get(driver_code, pd.DataFrame(columns=["time", "position"]))
+            leaderboard_points = [
+                RaceLeaderboardPoint(time=float(row.time), position=float(row.position))
+                for row in leaderboard_frame.itertuples(index=False)
+            ]
+            sampled_leaderboard_points = self._downsample_points(leaderboard_points, max_leaderboard_points)
+
+            if sampled_track_points:
+                duration_candidates.append(sampled_track_points[-1].time)
+            if sampled_leaderboard_points:
+                duration_candidates.append(sampled_leaderboard_points[-1].time)
+
+            driver_name, team_name = driver_meta.get(driver_code, (driver_code, "Unknown"))
+            drivers.append(
+                RaceDriverReplay(
+                    driver=driver_code,
+                    driver_name=driver_name,
+                    team=team_name,
+                    positions=sampled_track_points,
+                    leaderboard=sampled_leaderboard_points,
+                )
+            )
+
+        drivers.sort(key=lambda item: item.driver)
+        duration_seconds = max(duration_candidates) if duration_candidates else 0.0
+
+        return RaceReplayResponse(
+            year=year,
+            grand_prix=grand_prix,
+            session=session_code,
+            duration_seconds=duration_seconds,
+            drivers=drivers,
         )
 
     def _load_session(self, year: int, grand_prix: str, session_code: str) -> Any:

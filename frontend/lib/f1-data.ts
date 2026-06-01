@@ -69,16 +69,16 @@ export const DRIVER_OPTIONS: DriverOption[] = [
 ];
 
 const TEAM_COLOR_MAP: Record<string, string> = {
-  Ferrari: "#E10600",
-  McLaren: "#FF8700",
+  Ferrari: "#DC0000",
+  McLaren: "#FF8000",
   Mercedes: "#00D2BE",
-  "Red Bull Racing": "#1E5AFF",
-  "Aston Martin": "#006F62",
-  Alpine: "#0090FF",
-  Williams: "#00A3E0",
+  "Red Bull Racing": "#1A2B6C",
+  "Aston Martin": "#005A47",
+  Alpine: "#FF6FB5",
+  Williams: "#0057B8",
   Haas: "#B6BABD",
-  Sauber: "#9B1C31",
-  "Racing Bulls": "#4C6FFF",
+  Sauber: "#76D66B",
+  "Racing Bulls": "#F5F7FA",
 };
 
 export function getGrandPrixOption(slugOrLabel: string) {
@@ -109,8 +109,12 @@ export function getTeamColor(team: string | null | undefined) {
   if (normalized.includes("alpine")) return TEAM_COLOR_MAP.Alpine;
   if (normalized.includes("williams")) return TEAM_COLOR_MAP.Williams;
   if (normalized.includes("haas")) return TEAM_COLOR_MAP.Haas;
-  if (normalized.includes("sauber")) return TEAM_COLOR_MAP.Sauber;
-  if (normalized.includes("racing bulls") || normalized.includes("rb")) {
+  if (normalized.includes("sauber") || normalized.includes("kick")) return TEAM_COLOR_MAP.Sauber;
+  if (
+    normalized.includes("racing bulls") ||
+    normalized.includes("visa cash app") ||
+    normalized.includes("rb")
+  ) {
     return TEAM_COLOR_MAP["Racing Bulls"];
   }
 

@@ -9,6 +9,7 @@ import useMeasure from "react-use-measure";
 import {
   fetchFastestLap,
   fetchPositions,
+  fetchRaceReplay,
   fetchSpeed,
   fetchDriverTelemetry,
   type SessionSelection,
@@ -34,10 +35,12 @@ import {
   type LapChartPoint,
   type SpeedPoint,
 } from "./replay-dashboard/utils";
-import { RacePlaceholder } from "./replay-dashboard/race-placeholder";
+import { RaceReplayPanel } from "./replay-dashboard/race-replay-panel";
 import { SessionHeader } from "./replay-dashboard/session-header";
 import { SpeedTracePanel } from "./replay-dashboard/speed-trace-panel";
 import { TrackReplayPanel } from "./replay-dashboard/track-replay-panel";
+
+const TRACK_MAP_PADDING = 56;
 
 type DashboardState = {
   mode: DashboardMode;
@@ -52,16 +55,16 @@ type ReplayDashboardContentProps = DashboardState & {
 
 function buildSelectionFromSearchParams(searchParams: URLSearchParams): DashboardState {
   const modeParam = searchParams.get("mode")?.toLowerCase();
+  const mode: DashboardMode = modeParam === "race" ? "race" : DEFAULT_DASHBOARD_MODE;
   const gpParam = searchParams.get("gp") ?? DEFAULT_GRAND_PRIX;
   const driverParam = searchParams.get("driver") ?? DEFAULT_DRIVER;
-  const yearParam = Number(searchParams.get("year") ?? DEFAULT_YEAR);
 
   return {
-    mode: modeParam === "race" ? "race" : DEFAULT_DASHBOARD_MODE,
+    mode,
     selection: {
-      year: Number.isFinite(yearParam) ? yearParam : DEFAULT_YEAR,
+      year: DEFAULT_YEAR,
       grandPrix: getGrandPrixOption(gpParam).label,
-      session: searchParams.get("session")?.toUpperCase() || DEFAULT_SESSION,
+      session: mode === "race" ? "R" : DEFAULT_SESSION,
       driver: getDriverOption(driverParam)?.code ?? DEFAULT_DRIVER,
     },
   };
@@ -98,18 +101,21 @@ function ReplayDashboardContent({
     reset,
   } = useReplayStore();
 
+  const effectiveSelection = useMemo<SessionSelection>(
+    () => ({
+      ...selection,
+      year: DEFAULT_YEAR,
+      session: mode === "race" ? "R" : "Q",
+    }),
+    [mode, selection],
+  );
+
   const updateUrl = useCallback(
     (nextMode: DashboardMode, nextSelection: SessionSelection) => {
       const params = new URLSearchParams();
       params.set("mode", nextMode);
       params.set("gp", getGrandPrixOption(nextSelection.grandPrix).slug);
       params.set("driver", nextSelection.driver);
-      if (nextSelection.year !== DEFAULT_YEAR) {
-        params.set("year", String(nextSelection.year));
-      }
-      if (nextSelection.session !== DEFAULT_SESSION) {
-        params.set("session", nextSelection.session);
-      }
 
       const nextQuery = params.toString();
       const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname;
@@ -123,38 +129,54 @@ function ReplayDashboardContent({
   );
 
   useEffect(() => {
-    updateUrl(mode, selection);
-  }, [mode, selection, updateUrl]);
+    updateUrl(mode, effectiveSelection);
+  }, [mode, effectiveSelection, updateUrl]);
 
   const qualifyingEnabled = mode === "qualifying";
+  const raceEnabled = mode === "race";
 
   const positionsQuery = useQuery({
-    queryKey: ["positions", selection, mode],
-    queryFn: () => fetchPositions(selection, 8000),
+    queryKey: ["positions", effectiveSelection, mode],
+    queryFn: () => fetchPositions(effectiveSelection, 8000),
     enabled: qualifyingEnabled,
   });
 
   const driverTelemetryQuery = useQuery({
-    queryKey: ["driver-telemetry", selection, mode],
-    queryFn: () => fetchDriverTelemetry(selection),
+    queryKey: ["driver-telemetry", effectiveSelection, mode],
+    queryFn: () => fetchDriverTelemetry(effectiveSelection),
     enabled: qualifyingEnabled,
   });
 
   const speedQuery = useQuery({
-    queryKey: ["speed", selection, mode],
-    queryFn: () => fetchSpeed(selection, 8000),
+    queryKey: ["speed", effectiveSelection, mode],
+    queryFn: () => fetchSpeed(effectiveSelection, 8000),
     enabled: qualifyingEnabled,
   });
 
   const fastestLapQuery = useQuery({
-    queryKey: ["fastest-lap", selection.year, selection.grandPrix, selection.session, mode],
+    queryKey: ["fastest-lap", effectiveSelection.year, effectiveSelection.grandPrix, effectiveSelection.session, mode],
     queryFn: () =>
       fetchFastestLap({
-        year: selection.year,
-        grandPrix: selection.grandPrix,
-        session: selection.session,
+        year: effectiveSelection.year,
+        grandPrix: effectiveSelection.grandPrix,
+        session: effectiveSelection.session,
       }),
     enabled: qualifyingEnabled,
+  });
+
+  const raceReplayQuery = useQuery({
+    queryKey: ["race-replay", effectiveSelection.year, effectiveSelection.grandPrix, mode],
+    queryFn: () =>
+      fetchRaceReplay(
+        {
+          year: effectiveSelection.year,
+          grandPrix: effectiveSelection.grandPrix,
+          session: "R",
+        },
+        3500,
+        1500,
+      ),
+    enabled: raceEnabled,
   });
 
   const speedPoints = useMemo<SpeedPoint[]>(
@@ -206,11 +228,18 @@ function ReplayDashboardContent({
 
   const updateSelection = useCallback(
     (updater: (previous: SessionSelection) => SessionSelection) => {
-      setSelection((previous) => updater(previous));
+      setSelection((previous) => {
+        const next = updater(previous);
+        return {
+          ...next,
+          year: DEFAULT_YEAR,
+          session: mode === "race" ? "R" : "Q",
+        };
+      });
       setSelectedLapIndex(0);
       setHoveredTime(null);
     },
-    [setHoveredTime],
+    [mode, setHoveredTime],
   );
 
   const selectedLapChartPoints = useMemo(() => {
@@ -228,6 +257,10 @@ function ReplayDashboardContent({
   }, [selectedLapSegment]);
 
   const resolvedDuration = useMemo(() => {
+    if (raceEnabled) {
+      return raceReplayQuery.data?.duration_seconds ?? 0;
+    }
+
     const speedMax = normalizedSpeedPoints.length
       ? normalizedSpeedPoints[normalizedSpeedPoints.length - 1].time
       : 0;
@@ -235,13 +268,13 @@ function ReplayDashboardContent({
       ? normalizedPositionPoints[normalizedPositionPoints.length - 1].time
       : 0;
     return Math.max(speedMax, positionMax);
-  }, [normalizedPositionPoints, normalizedSpeedPoints]);
+  }, [normalizedPositionPoints, normalizedSpeedPoints, raceEnabled, raceReplayQuery.data?.duration_seconds]);
 
   useEffect(() => {
     setCurrentTime(0);
     setPlaying(false);
     setHoveredTime(null);
-  }, [selection, setCurrentTime, setHoveredTime, setPlaying]);
+  }, [effectiveSelection, mode, setCurrentTime, setHoveredTime, setPlaying]);
 
   useEffect(() => {
     setDuration(resolvedDuration);
@@ -294,15 +327,25 @@ function ReplayDashboardContent({
     [normalizedSpeedPoints, currentTime],
   );
 
-  const xScale = useMemo(
-    () => scaleLinear().domain([0, 1]).range([24, Math.max(24, trackBounds.width - 24)]),
-    [trackBounds.width],
-  );
+  const xScale = useMemo(() => {
+    const w = trackBounds.width - TRACK_MAP_PADDING * 2;
+    const h = trackBounds.height - TRACK_MAP_PADDING * 2;
+    const scale = Math.min(Math.max(1, w), Math.max(1, h));
+    const xOffset = TRACK_MAP_PADDING + (w - scale) / 2;
+    return scaleLinear()
+      .domain([0, 1])
+      .range([xOffset, xOffset + scale]);
+  }, [trackBounds.width, trackBounds.height]);
 
-  const yScale = useMemo(
-    () => scaleLinear().domain([0, 1]).range([Math.max(24, trackBounds.height - 24), 24]),
-    [trackBounds.height],
-  );
+  const yScale = useMemo(() => {
+    const w = trackBounds.width - TRACK_MAP_PADDING * 2;
+    const h = trackBounds.height - TRACK_MAP_PADDING * 2;
+    const scale = Math.min(Math.max(1, w), Math.max(1, h));
+    const yOffset = TRACK_MAP_PADDING + (h - scale) / 2;
+    return scaleLinear()
+      .domain([0, 1])
+      .range([yOffset + scale, yOffset]);
+  }, [trackBounds.width, trackBounds.height]);
 
   const path = useMemo(() => {
     if (!normalizedPositionPoints.length || trackBounds.width <= 0 || trackBounds.height <= 0) {
@@ -361,14 +404,16 @@ function ReplayDashboardContent({
     yScale,
   ]);
 
-  const isLoading =
-    qualifyingEnabled &&
-    (positionsQuery.isLoading || speedQuery.isLoading || fastestLapQuery.isLoading || driverTelemetryQuery.isLoading);
-  const isError = positionsQuery.isError || speedQuery.isError;
-  const errorMessage =
-    (positionsQuery.error as Error | undefined)?.message ||
-    (speedQuery.error as Error | undefined)?.message ||
-    "Failed to load telemetry.";
+  const isLoading = raceEnabled
+    ? raceReplayQuery.isLoading
+    : qualifyingEnabled &&
+      (positionsQuery.isLoading || speedQuery.isLoading || fastestLapQuery.isLoading || driverTelemetryQuery.isLoading);
+  const isError = raceEnabled ? raceReplayQuery.isError : positionsQuery.isError || speedQuery.isError;
+  const errorMessage = raceEnabled
+    ? (raceReplayQuery.error as Error | undefined)?.message || "Failed to load race replay."
+    : (positionsQuery.error as Error | undefined)?.message ||
+      (speedQuery.error as Error | undefined)?.message ||
+      "Failed to load telemetry.";
 
   const onChartHover = useCallback(
     (state: { activeLabel?: number } | null) => {
@@ -425,18 +470,23 @@ function ReplayDashboardContent({
     },
     {
       label: "Session",
-      value: selection.session,
-      subtext: "Qualifying",
+      value: effectiveSelection.session,
+      subtext: mode === "race" ? "Race" : "Qualifying",
     },
     {
       label: "Grand Prix",
       value: selectedGrandPrix.label,
-      subtext: `${selection.year}`,
+      subtext: `${effectiveSelection.year}`,
     },
   ];
 
   const handleModeChange = useCallback((nextMode: DashboardMode) => {
     setMode(nextMode);
+    setSelection((previous) => ({
+      ...previous,
+      year: DEFAULT_YEAR,
+      session: nextMode === "race" ? "R" : "Q",
+    }));
   }, []);
 
   return (
@@ -450,7 +500,21 @@ function ReplayDashboardContent({
       />
 
       {mode === "race" ? (
-        <RacePlaceholder />
+        <RaceReplayPanel
+          trackRef={trackRef}
+          trackBounds={trackBounds}
+          raceData={raceReplayQuery.data}
+          currentTime={currentTime}
+          duration={duration}
+          isPlaying={isPlaying}
+          isLoading={isLoading}
+          playbackRate={playbackRate}
+          onTogglePlayback={handleTogglePlayback}
+          onSeekBy={seekBy}
+          onReset={reset}
+          onSetPlaybackRate={setPlaybackRate}
+          onSetCurrentTime={setCurrentTime}
+        />
       ) : (
         <section className="flex flex-col gap-6">
           <TrackReplayPanel
@@ -492,7 +556,7 @@ function ReplayDashboardContent({
             selectedTeam={telemetryTeam}
             selectedDriverName={telemetryDriverName}
             trackLabel={selectedGrandPrix.circuit}
-            sessionLabel={selection.session}
+            sessionLabel={effectiveSelection.session}
             grandPrixLabel={selectedGrandPrix.label}
             isLoading={isLoading}
             summaryCards={summaryCards}

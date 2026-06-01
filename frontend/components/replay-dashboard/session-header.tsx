@@ -20,6 +20,7 @@ import {
   getGrandPrixOption,
   type DashboardMode,
   type DriverOption,
+  type GrandPrixOption,
 } from "@/lib/f1-data";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,14 @@ function formatDriverLabel(driver: DriverOption | null) {
   }
 
   return `${driver.code} · ${driver.name}`;
+}
+
+function formatGrandPrixLabel(grandPrix: GrandPrixOption | null) {
+  if (!grandPrix) {
+    return DEFAULT_GRAND_PRIX;
+  }
+
+  return grandPrix.label;
 }
 
 function SearchableDriverDropdown({
@@ -163,6 +172,133 @@ function SearchableDriverDropdown({
   );
 }
 
+function SearchableGrandPrixDropdown({
+  value,
+  options,
+  onSelect,
+  disabled,
+}: {
+  value: string;
+  options: GrandPrixOption[];
+  onSelect: (label: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const selected = useMemo(
+    () => options.find((option) => option.label === value || option.slug === value) ?? null,
+    [options, value],
+  );
+
+  const filteredOptions = useMemo(() => {
+    const trimmedQuery = query.trim().toLowerCase();
+    if (!trimmedQuery) {
+      return options;
+    }
+
+    return options.filter((option) => {
+      const haystack = `${option.label} ${option.slug} ${option.circuit}`.toLowerCase();
+      return haystack.includes(trimmedQuery);
+    });
+  }, [options, query]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((current) => !current)}
+        className={cn(
+          "flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left transition",
+          "hover:border-[#e10600]/45 hover:bg-white/[0.06]",
+          disabled && "cursor-not-allowed opacity-70",
+        )}
+      >
+        <span>
+          <span className="block text-[10px] uppercase tracking-[0.24em] text-white/45">
+            Grand Prix
+          </span>
+          <span className="mt-1 block text-sm font-medium text-white">
+            {formatGrandPrixLabel(selected)}
+          </span>
+          <span className="mt-1 block text-xs text-white/45">
+            {selected?.circuit ?? "Select a race weekend"}
+          </span>
+        </span>
+        <ChevronDown className="h-4 w-4 text-white/60" />
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-3xl border border-white/10 bg-[#10131b] shadow-[0_24px_80px_rgba(0,0,0,0.6)]">
+          <div className="flex items-center gap-2 border-b border-white/8 px-4 py-3">
+            <Search className="h-4 w-4 text-white/45" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search GP, circuit, or slug"
+              className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/30"
+            />
+          </div>
+          <div className="max-h-80 overflow-auto p-2">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option) => (
+                <button
+                  key={option.slug}
+                  type="button"
+                  onClick={() => {
+                    onSelect(option.label);
+                    setOpen(false);
+                    setQuery("");
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left transition",
+                    option.label === selected?.label
+                      ? "bg-[#e10600]/12 text-white"
+                      : "text-[#d9dde7] hover:bg-white/5",
+                  )}
+                >
+                  <span>
+                    <span className="block text-sm font-semibold">
+                      {option.label}
+                    </span>
+                    <span className="block text-xs text-white/45">
+                      {option.circuit}
+                    </span>
+                  </span>
+                  <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.22em] text-white/55">
+                    Select
+                  </span>
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-6 text-sm text-white/45">
+                No matching grands prix.
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function TabButton({
   active,
   children,
@@ -253,47 +389,26 @@ export function SessionHeader({
 
       {mode === "race" ? null : (
         <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-[160px_minmax(0,1.35fr)_minmax(0,1.5fr)]">
-          <label className="space-y-2 text-sm">
+          <div className="space-y-2 text-sm">
             <span className="block text-[10px] uppercase tracking-[0.24em] text-white/45">
               Season
             </span>
-            <select
-              value={selection.year}
-              onChange={(event) =>
-                onChange((previous) => ({
-                  ...previous,
-                  year: Number(event.target.value) || previous.year,
-                }))
-              }
-              className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition focus:border-[#e10600]/45"
-            >
-              <option value={DEFAULT_YEAR}>{DEFAULT_YEAR}</option>
-            </select>
-          </label>
+            <div className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-medium text-white">
+              {DEFAULT_YEAR}
+            </div>
+          </div>
 
-          <label className="space-y-2 text-sm">
-            <span className="block text-[10px] uppercase tracking-[0.24em] text-white/45">
-              Grand Prix
-            </span>
-            <select
-              value={selection.grandPrix}
-              onChange={(event) =>
-                onChange((previous) => ({
-                  ...previous,
-                  grandPrix: event.target.value,
-                }))
-              }
-              className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition focus:border-[#e10600]/45"
-              disabled={isLoading}
-            >
-              {GRAND_PRIX_OPTIONS.map((option) => (
-                <option key={option.slug} value={option.label}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-white/40">{selectedGrandPrix.circuit}</p>
-          </label>
+          <SearchableGrandPrixDropdown
+            value={selection.grandPrix}
+            options={GRAND_PRIX_OPTIONS}
+            onSelect={(grandPrix) =>
+              onChange((previous) => ({
+                ...previous,
+                grandPrix,
+              }))
+            }
+            disabled={isLoading}
+          />
 
           <SearchableDriverDropdown
             value={selection.driver}

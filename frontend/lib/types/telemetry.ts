@@ -57,3 +57,24 @@ export type FastestLapResponse = {
   lap_number: number | null;
   compound: string | null;
 };
+
+export type RaceLeaderboardPoint = {
+  time: number;
+  position: number;
+};
+
+export type RaceDriverReplay = {
+  driver: string;
+  driver_name: string;
+  team: string;
+  positions: PositionPoint[];
+  leaderboard: RaceLeaderboardPoint[];
+};
+
+export type RaceReplayResponse = {
+  year: number;
+  grand_prix: string;
+  session: string;
+  duration_seconds: number;
+  drivers: RaceDriverReplay[];
+};

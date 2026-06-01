@@ -3,6 +3,7 @@ import {
   type FastestLapResponse,
   type MetricSeriesResponse,
   type PositionSeriesResponse,
+  type RaceReplayResponse,
 } from "@/lib/types/telemetry";
 
 type QueryParams = Record<string, string | number | undefined>;
@@ -95,5 +96,19 @@ export async function fetchFastestLap(
     year: selection.year,
     grand_prix: selection.grandPrix,
     session: selection.session,
+  });
+}
+
+export async function fetchRaceReplay(
+  selection: Omit<SessionSelection, "driver">,
+  maxTrackPoints = 4000,
+  maxLeaderboardPoints = 1200,
+) {
+  return requestJson<RaceReplayResponse>("/telemetry/race-replay", {
+    year: selection.year,
+    grand_prix: selection.grandPrix,
+    session: selection.session,
+    max_track_points: maxTrackPoints,
+    max_leaderboard_points: maxLeaderboardPoints,
   });
 }
